@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> DSmartquiz 🎲</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+       
+        :root {
+            --player1-color: #ff6b6b;
+            --player2-color: #4ecdc4;
+            --player3-color: #ffd166;
+            --player4-color: #9d4edd;
+            --board-bg: #2d3748;
+            --cell-bg: #4a5568;
+            --cell-hover: #718096;
+            --safe-color: #51cf66;
+            --skill-color: #ff922b;
+            --points-color: #fcc419;
+        }
+       
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow: hidden;
+        }
+       
+        /* MAIN GAME CONTAINER */
+        .game-container {
+            width: 100%;
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+       
+        /* HEADER */
+        .game-header {
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            z-index: 10;
+        }
+       
+        .game-title {
+            color: white;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+       
+        .game-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+       
+        .current-turn-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(1rem, 3vw, 1.3rem);
+            border: 2px solid;
+            animation: pulse 2s infinite;
+        }
+       
+        .points-display {
+            background: rgba(252, 196, 25, 0.2);
+            padding: 8px 15px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            border: 2px solid var(--points-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+       
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.3); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+       
+        /* BOARD CONTAINER */
+        .board-container {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            padding: 20px;
+            background: var(--board-bg);
+        }
+       
+        /* ZIGZAG BOARD */
+        .zigzag-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-auto-rows: minmax(70px, 1fr);
+            gap: 8px;
+            margin: 0 auto;
+            max-width: min(1000px, 95vw);
+            position: relative;
+            transform-origin: center;
+            transition: transform 0.3s;
+        }
+       
+        /* Reverse every other row for bustrophedon pattern */
+        .board-row {
+            display: contents;
+        }
+       
+        .board-row:nth-child(even) .board-cell:nth-child(1) { order: 10; }
+        .board-row:nth-child(even) .board-cell:nth-child(2) { order: 9; }
+        .board-row:nth-child(even) .board-cell:nth-child(3) { order: 8; }
+        .board-row:nth-child(even) .board-cell:nth-child(4) { order: 7; }
+        .board-row:nth-child(even) .board-cell:nth-child(5) { order: 6; }
+        .board-row:nth-child(even) .board-cell:nth-child(6) { order: 5; }
+        .board-row:nth-child(even) .board-cell:nth-child(7) { order: 4; }
+        .board-row:nth-child(even) .board-cell:nth-child(8) { order: 3; }
+        .board-row:nth-child(even) .board-cell:nth-child(9) { order: 2; }
+        .board-row:nth-child(even) .board-cell:nth-child(10) { order: 1; }
+       
+        .board-cell {
+            background: linear-gradient(135deg, var(--cell-bg), #5a6578);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            position: relative;
+            box-shadow:
+                inset 0 0 10px rgba(0,0,0,0.3),
+                0 4px 8px rgba(0,0,0,0.2);
+            border: 2px solid #2d3748;
+            transition: all 0.3s;
+            aspect-ratio: 1;
+            min-height: 60px;
+            cursor: pointer;
+        }
+       
+        .board-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            z-index: 5;
+            background: var(--cell-hover);
+        }
+       
+        .board-cell.start {
+            background: linear-gradient(135deg, var(--player2-color), #6de7de);
+        }
+       
+        .board-cell.finish {
+            background: linear-gradient(135deg, #51cf66, #2f9e44);
+            animation: finish-glow 2s infinite;
+        }
+       
+        @keyframes finish-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(81, 207, 102, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(81, 207, 102, 0.8); }
+        }
+       
+        .board-cell.special {
+            background: linear-gradient(135deg, #ffd166, #ffb347);
+            color: #333;
+        }
+       
+        .board-cell.skill {
+            background: linear-gradient(135deg, var(--skill-color), #ff922b);
+            color: white;
+            animation: skill-glow 3s infinite;
+        }
+       
+        @keyframes skill-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 146, 43, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(255, 146, 43, 0.8); }
+        }
+       
+        .board-cell.safe {
+            background: linear-gradient(135deg, var(--safe-color), #2f9e44);
+            color: white;
+            animation: safe-glow 4s infinite;
+        }
+       
+        @keyframes safe-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(81, 207, 102, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(81, 207, 102, 0.8); }
+        }
+       
+        .cell-number {
+            font-size: 0.9em;
+            font-weight: bold;
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.3);
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+       
+        .cell-effect {
+            font-size: 1.5em;
+            margin-top: 5px;
+        }
+       
+        .cell-label {
+            font-size: 0.7em;
+            position: absolute;
+            bottom: 5px;
+            text-align: center;
+            width: 100%;
+            font-weight: normal;
+        }
+       
+        /* PLAYER MARKERS */
+        .player-marker {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border: 3px solid white;
+            z-index: 10;
+            transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-size: 0.9em;
+            transform-origin: center;
+        }
+       
+        .player-marker.p1 {
+            background: linear-gradient(135deg, var(--player1-color), #ff8e8e);
+            z-index: 13;
+        }
+       
+        .player-marker.p2 {
+            background: linear-gradient(135deg, var(--player2-color), #6de7de);
+            z-index: 12;
+        }
+       
+        .player-marker.p3 {
+            background: linear-gradient(135deg, var(--player3-color), #ffe699);
+            z-index: 11;
+        }
+       
+        .player-marker.p4 {
+            background: linear-gradient(135deg, var(--player4-color), #c77dff);
+            z-index: 10;
+        }
+       
+        .player-marker.active-player {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px currentColor;
+            border: 3px solid white;
+            animation: player-pulse 1.5s infinite;
+        }
+       
+        @keyframes player-pulse {
+            0%, 100% { transform: scale(1.2); }
+            50% { transform: scale(1.3); }
+        }
+       
+        /* PLAYER STATS BAR */
+        .players-stats-bar {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            overflow-x: auto;
+            min-height: 100px;
+        }
+       
+        .player-stat-card {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+        }
+       
+        .player-stat-card.active {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+       
+        .player-points-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--points-color);
+            color: #333;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+       
+        .player-skills-badge {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: var(--skill-color);
+            color: white;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+       
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            background: var(--player-color);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 3px solid white;
+            flex-shrink: 0;
+        }
+       
+        .player-info {
+            flex: 1;
+            min-width: 0;
+        }
+       
+        .player-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+       
+        .player-position {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--player-color);
+            margin-bottom: 5px;
+        }
+       
+        .player-stats {
+            display: flex;
+            gap: 10px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+       
+        /* DICE POSITIONS */
+        .dice-container {
+            position: fixed;
+            width: 90px;
+            height: 90px;
+            z-index: 20;
+            transition: all 0.5s;
+        }
+       
+        .dice-container.player1 {
+            bottom: 20px;
+            left: 20px;
+        }
+       
+        .dice-container.player2 {
+            top: 20px;
+            left: 20px;
+        }
+       
+        .dice-container.player3 {
+            top: 20px;
+            right: 20px;
+        }
+       
+        .dice-container.player4 {
+            bottom: 20px;
+            right: 20px;
+        }
+       
+        .dice {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8em;
+            font-weight: bold;
+            box-shadow:
+                0 15px 30px rgba(0,0,0,0.3),
+                inset 0 0 20px rgba(255,255,255,0.8);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            border: 5px solid var(--dice-color);
+            color: #333;
+        }
+       
+        .dice:hover:not(:disabled) {
+            transform: rotate(15deg) scale(1.1);
+            box-shadow:
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 0 20px rgba(255,255,255,0.9);
+        }
+       
+        .dice.rolling {
+            animation: roll 1.2s ease-in-out;
+        }
+       
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            75% { transform: rotate(270deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+       
+        /* QUIZ MODAL - POSITIONED AT BOTTOM */
+        .quiz-modal {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            max-height: 40vh;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            border-top: 4px solid #667eea;
+            overflow-y: auto;
+        }
+       
+        .quiz-modal.active {
+            display: block;
+            animation: slideUp 0.3s;
+        }
+       
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+       
+        .quiz-container {
+            padding: 20px;
+            width: 100%;
+            max-width: 100%;
+        }
+       
+        .quiz-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+       
+        .quiz-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        }
+       
+        .quiz-title {
+            color: white;
+            font-size: 1.5em;
+            margin: 0;
+            flex: 1;
+        }
+       
+        .timer-display {
+            background: rgba(255, 107, 107, 0.3);
+            padding: 8px 15px;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid #ff6b6b;
+            animation: timer-pulse 1s infinite;
+        }
+       
+        @keyframes timer-pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(255, 107, 107, 0.5); }
+            50% { box-shadow: 0 0 15px rgba(255, 107, 107, 0.8); }
+        }
+       
+        .question-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+       
+        .question-text {
+            font-size: 1.2em;
+            color: white;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+       
+        .difficulty-indicator {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+       
+        .difficulty-easy { background: #51cf66; color: white; }
+        .difficulty-normal { background: #ffd166; color: #333; }
+        .difficulty-hard { background: #ff6b6b; color: white; }
+       
+        .options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+       
+        @media (max-width: 768px) {
+            .options {
+                grid-template-columns: 1fr;
+            }
+        }
+       
+        .option-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1em;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            border-left: 5px solid transparent;
+        }
+       
+        .option-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+            border-left-color: #667eea;
+        }
+       
+        .option-btn.correct {
+            background: linear-gradient(135deg, #51cf66, #2f9e44);
+            color: white;
+            border-left-color: #2f9e44;
+        }
+       
+        .option-btn.wrong {
+            background: linear-gradient(135deg, #ff6b6b, #e03131);
+            color: white;
+            border-left-color: #e03131;
+        }
+       
+        /* SKILL MODAL - IMPROVED */
+        .skill-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            backdrop-filter: blur(5px);
+        }
+       
+        .skill-modal.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+       
+        .skill-container {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 25px;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow:
+                0 25px 50px rgba(0, 0, 0, 0.7),
+                0 0 0 2px var(--skill-color);
+            border: 3px solid var(--skill-color);
+            position: relative;
+        }
+       
+        .skill-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--skill-color);
+        }
+       
+        .skill-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--skill-color), #ff922b);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 16px rgba(255, 146, 43, 0.4);
+        }
+       
+        .skill-title {
+            color: white;
+            font-size: 1.8em;
+            margin: 0;
+        }
+       
+        .skill-description {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+       
+        .skill-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+       
+        .skill-item-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 1em;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid transparent;
+        }
+       
+        .skill-item-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            border-color: var(--skill-color);
+        }
+       
+        .skill-item-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+       
+        .skill-item-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 146, 43, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--skill-color);
+            font-size: 24px;
+        }
+       
+        .skill-item-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+       
+        .skill-item-count {
+            background: var(--skill-color);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+       
+        .player-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+       
+        .player-select-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 1em;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid transparent;
+        }
+       
+        .player-select-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            border-color: var(--skill-color);
+        }
+       
+        .player-select-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 2px solid white;
+        }
+       
+        .player-select-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+       
+        .player-select-position {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+       
+        /* POINTS SHOP MODAL */
+        .shop-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1003;
+            backdrop-filter: blur(5px);
+        }
+       
+        .shop-modal.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+       
+        .shop-container {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 25px;
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow:
+                0 25px 50px rgba(0, 0, 0, 0.7),
+                0 0 0 2px var(--points-color);
+            border: 3px solid var(--points-color);
+            position: relative;
+        }
+       
+        .shop-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--points-color);
+            justify-content: space-between;
+        }
+       
+        .shop-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--points-color), #f08c00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 16px rgba(252, 196, 25, 0.4);
+        }
+       
+        .shop-title {
+            color: white;
+            font-size: 1.8em;
+            margin: 0;
+            flex: 1;
+        }
+       
+        .shop-points {
+            background: rgba(252, 196, 25, 0.2);
+            padding: 10px 20px;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid var(--points-color);
+        }
+       
+        .shop-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+       
+        .shop-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+       
+        .shop-item:hover {
+            border-color: var(--points-color);
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+       
+        .shop-item-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(252, 196, 25, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--points-color);
+            font-size: 28px;
+        }
+       
+        .shop-item-name {
+            color: white;
+            font-size: 1.3em;
+            font-weight: bold;
+            text-align: center;
+        }
+       
+        .shop-item-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9em;
+            text-align: center;
+            line-height: 1.5;
+        }
+       
+        .shop-item-price {
+            background: var(--points-color);
+            color: #333;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+       
+        /* CONTROLS */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+       
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 1;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+       
+        .show-board-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            border: 2px solid white;
+        }
+       
+        .next-btn {
+            background: linear-gradient(135deg, #51cf66, #2f9e44);
+            color: white;
+        }
+       
+        .next-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(81, 207, 102, 0.4);
+        }
+       
+        .skill-btn {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--skill-color), #ff922b);
+            color: white;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 146, 43, 0.4);
+            border: 2px solid white;
+        }
+       
+        .shop-btn {
+            position: fixed;
+            top: 140px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--points-color), #f08c00);
+            color: white;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(252, 196, 25, 0.4);
+            border: 2px solid white;
+        }
+       
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+       
+        /* EFFECT MODAL */
+        .effect-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #fff9db, #ffec99);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            border: 4px solid #ffd43b;
+            animation: slideIn 0.5s ease-out;
+        }
+       
+        .effect-modal.show {
+            display: block;
+        }
+       
+        .effect-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            color: #e67700;
+        }
+       
+        .effect-icon {
+            font-size: 2.5em;
+        }
+       
+        .effect-title {
+            font-size: 1.8em;
+            margin: 0;
+        }
+       
+        .effect-text {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+       
+        .action-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+       
+        .action-btn {
+            padding: 15px;
+            background: linear-gradient(135deg, var(--btn-color), var(--btn-color-dark));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s;
+            text-align: center;
+        }
+       
+        .action-btn:hover {
+            transform: translateX(10px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+       
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 768px) {
+            .game-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+           
+            .game-info {
+                justify-content: center;
+            }
+           
+            .players-stats-bar {
+                flex-direction: column;
+                min-height: auto;
+            }
+           
+            .player-stat-card {
+                min-width: 100%;
+            }
+           
+            .board-cell {
+                min-height: 50px;
+                font-size: 0.8rem;
+            }
+           
+            .cell-number {
+                width: 20px;
+                height: 20px;
+                font-size: 0.7em;
+            }
+           
+            .dice-container {
+                width: 70px;
+                height: 70px;
+            }
+           
+            .dice {
+                font-size: 2em;
+            }
+           
+            .quiz-container {
+                padding: 15px;
+            }
+           
+            .question-text {
+                font-size: 1.1em;
+            }
+           
+            .option-btn {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+           
+            .skill-container, .shop-container {
+                padding: 20px;
+            }
+           
+            .skill-selection {
+                grid-template-columns: 1fr;
+            }
+        }
+       
+        @media (max-height: 700px) {
+            .board-cell {
+                min-height: 45px;
+            }
+           
+            .player-stat-card {
+                padding: 8px;
+            }
+           
+            .player-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+        }
+       
+        /* LANDSCAPE ORIENTATION */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .game-container {
+                flex-direction: row;
+            }
+           
+            .players-stats-bar {
+                flex-direction: column;
+                width: 200px;
+                min-height: 100%;
+                border-top: none;
+                border-right: 2px solid rgba(255, 255, 255, 0.2);
+            }
+           
+            .board-container {
+                flex: 2;
+            }
+           
+            .player-stat-card {
+                min-width: 100%;
+            }
+           
+            .quiz-modal {
+                max-height: 60vh;
+            }
+        }
+       
+        /* PORTRAIT ORIENTATION */
+        @media (orientation: portrait) {
+            .game-container {
+                flex-direction: column;
+            }
+           
+            .board-container {
+                order: 1;
+            }
+           
+            .players-stats-bar {
+                order: 2;
+            }
+        }
+       
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+       
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+       
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+       
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+        }
+       
+        /* CONFETTI */
+        .confetti {
+            position: fixed;
+            width: 15px;
+            height: 15px;
+            background-color: #f0f;
+            top: -20px;
+            opacity: 0;
+            z-index: 999;
+        }
+       
+        /* MESSAGE BOX */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, white, #f8f9fa);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            border: 4px solid #667eea;
+            text-align: center;
+        }
+       
+        .message-box.show {
+            display: block;
+            animation: popIn 0.3s;
+        }
+       
+        @keyframes popIn {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+       
+        .message-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+       
+        .message-title {
+            font-size: 2em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+       
+        .message-text {
+            font-size: 1.2em;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+       
+        /* MODE SELECTION */
+        .mode-selection {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+            gap: 30px;
+        }
+       
+        .mode-title {
+            color: white;
+            font-size: 3em;
+            text-align: center;
+            background: linear-gradient(90deg, #667eea, #764ba2, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+       
+        .mode-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+       
+        .mode-btn {
+            padding: 25px 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid transparent;
+            border-radius: 20px;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            min-width: 200px;
+        }
+       
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-10px);
+            border-color: #667eea;
+        }
+       
+        .mode-btn.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+       
+        .mode-icon {
+            font-size: 3em;
+        }
+    </style>
+</head>
+<body>
+    <!-- MODE SELECTION -->
+    <div class="mode-selection" id="modeSelection">
+        <h1 class="mode-title">🎲 Dsmart Quiz 🎲</h1>
+        <div class="mode-options">
+            <button class="mode-btn active" id="mode2P">
+                <i class="fas fa-users mode-icon"></i>
+                <span>2 Pemain</span>
+            </button>
+            <button class="mode-btn" id="mode3P">
+                <i class="fas fa-users mode-icon"></i>
+                <span>3 Pemain</span>
+            </button>
+            <button class="mode-btn" id="mode4P">
+                <i class="fas fa-users mode-icon"></i>
+                <span>4 Pemain</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN GAME -->
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <!-- HEADER -->
+        <div class="game-header">
+            <div class="game-title">
+                <i class="fas fa-route"></i>
+                <span>Dsmart Quiz</span>
+            </div>
+            <div class="game-info">
+                <div class="current-turn-display" id="currentTurnDisplay">
+                    Giliran Player 1
+                </div>
+                <div class="points-display" id="pointsDisplay">
+                    <i class="fas fa-coins"></i> Poin: <span id="pointsValue">0</span>
+                </div>
+            </div>
+        </div>
+       
+        <!-- BOARD -->
+        <div class="board-container" id="boardContainer">
+            <div class="zigzag-board" id="zigzagBoard"></div>
+        </div>
+       
+        <!-- PLAYER STATS -->
+        <div class="players-stats-bar" id="playersStatsBar"></div>
+       
+        <!-- DICE (Position changes based on player) -->
+        <div class="dice-container player1" id="diceContainer">
+            <div class="dice" id="dice">
+                <i class="fas fa-dice-d6"></i>
+            </div>
+        </div>
+       
+        <!-- SHOW BOARD BUTTON -->
+        <div class="show-board-btn" id="showBoardBtn" title="Lihat Papan">
+            <i class="fas fa-gamepad"></i>
+        </div>
+       
+        <!-- SKILL BUTTON -->
+        <div class="skill-btn" id="skillBtn" title="Gunakan Skill">
+            <i class="fas fa-magic"></i>
+        </div>
+       
+        <!-- SHOP BUTTON -->
+        <div class="shop-btn" id="shopBtn" title="Tukar Poin">
+            <i class="fas fa-shopping-cart"></i>
+        </div>
+    </div>
+   
+    <!-- QUIZ MODAL (POSITIONED AT BOTTOM) -->
+    <div class="quiz-modal" id="quizModal">
+        <div class="quiz-container">
+            <div class="quiz-header">
+                <div class="quiz-icon">
+                    <i class="fas fa-question"></i>
+                </div>
+                <h2 class="quiz-title" id="quizTitle">Quiz Time!</h2>
+                <div class="timer-display" id="quizTimer">
+                    <i class="fas fa-clock"></i> <span id="timerValue">30</span>s
+                </div>
+            </div>
+            <div class="question-box">
+                <div class="question-text" id="questionText">Memuat pertanyaan...</div>
+                <div class="options" id="optionsContainer"></div>
+            </div>
+            <div class="controls">
+                <button class="next-btn" id="quizCloseBtn" style="background: linear-gradient(135deg, #ff6b6b, #e03131);">
+                    <i class="fas fa-times"></i> Tutup (5s)
+                </button>
+                <button class="next-btn" id="quizNextBtn" disabled>
+                    <i class="fas fa-forward"></i> Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+   
+    <!-- SKILL MODAL - IMPROVED -->
+    <div class="skill-modal" id="skillModal">
+        <div class="skill-container">
+            <div class="skill-header">
+                <div class="skill-icon">
+                    <i class="fas fa-magic" id="skillModalIcon"></i>
+                </div>
+                <h3 class="skill-title" id="skillModalTitle">Skill Inventory</h3>
+            </div>
+            <div class="skill-description" id="skillModalDescription">
+                Pilih skill yang ingin digunakan:
+            </div>
+            <div class="skill-selection" id="skillSelection"></div>
+            <div class="player-selection" id="skillPlayerSelection" style="display: none;"></div>
+            <div class="controls">
+                <button class="next-btn" id="skillCancelBtn">
+                    <i class="fas fa-times"></i> Batal
+                </button>
+            </div>
+        </div>
+    </div>
+   
+    <!-- SHOP MODAL -->
+    <div class="shop-modal" id="shopModal">
+        <div class="shop-container">
+            <div class="shop-header">
+                <div class="shop-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <h3 class="shop-title">Toko Poin</h3>
+                <div class="shop-points">
+                    <i class="fas fa-coins"></i> <span id="shopPointsValue">0</span>
+                </div>
+            </div>
+            <div class="shop-items" id="shopItems">
+                <!-- Shop items will be inserted here -->
+            </div>
+            <div class="controls">
+                <button class="next-btn" id="shopCloseBtn">
+                    <i class="fas fa-times"></i> Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+   
+    <!-- EFFECT MODAL -->
+    <div class="effect-modal" id="effectModal">
+        <div class="effect-header">
+            <i class="fas fa-gift effect-icon" id="effectIcon"></i>
+            <h3 class="effect-title" id="effectTitle">Efek Petak Spesial!</h3>
+        </div>
+        <div class="effect-text" id="effectText"></div>
+        <div class="action-selection" id="actionSelection"></div>
+    </div>
+   
+    <!-- MESSAGE BOX -->
+    <div class="message-box" id="messageBox">
+        <div class="message-icon" id="messageIcon"></div>
+        <div class="message-title" id="messageTitle">Judul Pesan</div>
+        <div class="message-text" id="messageText">Isi pesan akan muncul di sini</div>
+        <button class="next-btn" onclick="closeMessage()">
+            <i class="fas fa-check"></i> OK
+        </button>
+    </div>
+
+    <script>
+        // Game Configuration
+        const TOTAL_CELLS = 100;
+        const FINISH_CELL = 100;
+        const BOARD_COLS = 10;
+        const BOARD_ROWS = 10;
+       
+        // Skill cells configuration
+        const SKILL_CELLS = [7, 15, 25, 35, 45, 55, 65, 75, 85, 95];
+        const SAFE_CELLS = [12, 22, 32, 42, 52, 62, 72, 82, 92];
+        // FITUR BARU: Petak hadiah
+        const REWARD_CELLS = [5, 10, 20, 40, 80];
+       
+        // Skill types - IMPROVED
+        const SKILL_TYPES = {
+            SABOTAGE: {
+                id: "sabotage",
+                name: "Sabotase",
+                icon: "fas fa-bomb",
+                description: "Mundurkan pemain lain 1-5 langkah",
+                points: 50,
+                effect: "moveBack",
+                requiresTarget: true
+            },
+            STEAL_TURN: {
+                id: "stealTurn",
+                name: "Curi Giliran",
+                icon: "fas fa-user-clock",
+                description: "Ambil giliran pemain lain",
+                points: 75,
+                effect: "stealTurn",
+                requiresTarget: true
+            },
+            BLOCK_TURN: {
+                id: "blockTurn",
+                name: "Blokir Giliran",
+                icon: "fas fa-ban",
+                description: "Blokir giliran pemain lain",
+                points: 100,
+                effect: "blockTurn",
+                requiresTarget: true
+            },
+            EXTRA_MOVE: {
+                id: "extraMove",
+                name: "Langkah Ekstra",
+                icon: "fas fa-shoe-prints",
+                description: "Dapat langkah ekstra 1-3",
+                points: 40,
+                effect: "extraMove",
+                requiresTarget: false
+            },
+            DOUBLE_POINTS: {
+                id: "doublePoints",
+                name: "Poin Double",
+                icon: "fas fa-coins",
+                description: "Poin 2x pada soal berikutnya",
+                points: 60,
+                effect: "doublePoints",
+                requiresTarget: false
+            }
+        };
+       
+        // Shop items
+        const SHOP_ITEMS = [
+            {
+                id: 1,
+                name: "Skill Sabotase",
+                icon: "fas fa-bomb",
+                description: "Mundurkan pemain lain 1-5 langkah",
+                price: 50,
+                type: "skill",
+                skill: SKILL_TYPES.SABOTAGE
+            },
+            {
+                id: 2,
+                name: "Skill Curi Giliran",
+                icon: "fas fa-user-clock",
+                description: "Ambil giliran pemain lain",
+                price: 75,
+                type: "skill",
+                skill: SKILL_TYPES.STEAL_TURN
+            },
+            {
+                id: 3,
+                name: "Skill Blokir Giliran",
+                icon: "fas fa-ban",
+                description: "Blokir giliran pemain lain",
+                price: 100,
+                type: "skill",
+                skill: SKILL_TYPES.BLOCK_TURN
+            },
+            {
+                id: 4,
+                name: "Skill Langkah Ekstra",
+                icon: "fas fa-shoe-prints",
+                description: "Dapat langkah ekstra 1-3",
+                price: 40,
+                type: "skill",
+                skill: SKILL_TYPES.EXTRA_MOVE
+            },
+            {
+                id: 5,
+                name: "Skill Poin Double",
+                icon: "fas fa-coins",
+                description: "Poin 2x pada soal berikutnya",
+                price: 60,
+                type: "skill",
+                skill: SKILL_TYPES.DOUBLE_POINTS
+            },
+            {
+                id: 6,
+                name: "Bonus Dadu x2",
+                icon: "fas fa-dice-d20",
+                description: "Dadu dikali 2 pada lemparan berikutnya",
+                price: 30,
+                type: "bonus",
+                effect: "doubleDice"
+            },
+            {
+                id: 7,
+                name: "Soal Mudah",
+                icon: "fas fa-book",
+                description: "Dapat soal mudah pada giliran berikutnya",
+                price: 25,
+                type: "bonus",
+                effect: "easyQuestion"
+            },
+            {
+                id: 8,
+                name: "Lindungi Diri",
+                icon: "fas fa-shield-alt",
+                description: "Kebal dari serangan 1 kali",
+                price: 40,
+                type: "bonus",
+                effect: "shield"
+            }
+        ];
+       
+        // Define special effects for each special cell
+        const SPECIAL_EFFECTS = {
+            5: {
+                name: "🎁 Petak Hadiah",
+                icon: "fas fa-gift",
+                color: "#ff6b6b",
+                effects: [
+                    { type: "forward", value: 2, description: "Maju 2 langkah", color: "#51cf66" },
+                    { type: "easy_question", description: "Dapat soal mudah", color: "#ffd166" },
+                    { type: "roll_again", description: "Lempar dadu lagi", color: "#667eea" }
+                ]
+            },
+            10: {
+                name: "⭐ Petak Keberuntungan",
+                icon: "fas fa-star",
+                color: "#ffd166",
+                effects: [
+                    { type: "forward", value: 2, description: "Maju 2 langkah", color: "#51cf66" },
+                    { type: "easy_question", description: "Soal mudah + bonus 2 langkah", color: "#ffd166" },
+                    { type: "double_next", description: "2x lempar dadu berikutnya", color: "#9d4edd" }
+                ]
+            },
+            20: {
+                name: "⚡ Petak Petir",
+                icon: "fas fa-bolt",
+                color: "#4ecdc4",
+                effects: [
+                    { type: "trap", value: -1, description: "Skip giliran 1x", color: "#ff6b6b" },
+                    { type: "forward", value: 2, description: "Maju 2 langkah", color: "#51cf66" },
+                    { type: "easy_question", description: "Soal mudah", color: "#ffd166" },
+                    { type: "trap", value: -2, description: "Mundur 2 langkah", color: "#e03131" }
+                ]
+            },
+            40: {
+                name: "🎲 Petak Dadu",
+                icon: "fas fa-dice",
+                color: "#9d4edd",
+                effects: [
+                    { type: "double_roll", description: "Dadu dilempar ×2", color: "#9d4edd" },
+                    { type: "trap_combo", description: "Skip giliran + mundur 2 langkah", color: "#e03131" },
+                    { type: "big_forward", value: 5, description: "Maju 5 langkah", color: "#51cf66" }
+                ]
+            },
+            80: {
+                name: "👑 Petak Raja",
+                icon: "fas fa-crown",
+                color: "#ffd700",
+                effects: [
+                    { type: "easy_question", description: "Soal mudah", color: "#ffd166" },
+                    { type: "forward", value: 2, description: "Maju 2 langkah", color: "#51cf66" },
+                    { type: "double_roll", description: "Dadu ×2", color: "#9d4edd" },
+                    { type: "attack", value: -3, description: "Serang pemain lain (mundur 3)", color: "#e03131" },
+                    { type: "big_trap", value: -6, description: "Terlempar mundur 6 langkah", color: "#c92a2a" }
+                ]
+            }
+        };
+       
+        // Game Variables
+        let players = [];
+        let currentPlayerIndex = 0;
+        let currentQuestion = null;
+        let diceValue = 0;
+        let gameActive = true;
+        let currentPlayerCount = 2;
+        let isQuizActive = false;
+        let isPlayerMoving = false;
+        let isSkillMode = false;
+        let currentSkill = null;
+        let quizTimer = null;
+        let timeLeft = 30;
+        let totalPoints = 0;
+       
+        // FITUR BARU: Variabel untuk tombol tutup quiz
+        let quizCloseTimeout = null;
+        let quizCloseInterval = null;
+        let closeDuration = 5; // dalam detik
+        let quizWillReopen = false;
+       
+        // DOM Elements
+        const gameContainer = document.getElementById('gameContainer');
+        const modeSelection = document.getElementById('modeSelection');
+        const zigzagBoard = document.getElementById('zigzagBoard');
+        const playersStatsBar = document.getElementById('playersStatsBar');
+        const diceContainer = document.getElementById('diceContainer');
+        const dice = document.getElementById('dice');
+        const showBoardBtn = document.getElementById('showBoardBtn');
+        const skillBtn = document.getElementById('skillBtn');
+        const shopBtn = document.getElementById('shopBtn');
+        const quizModal = document.getElementById('quizModal');
+        const quizTitle = document.getElementById('quizTitle');
+        const quizTimerDisplay = document.getElementById('quizTimer');
+        const timerValue = document.getElementById('timerValue');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const quizNextBtn = document.getElementById('quizNextBtn');
+        const quizCloseBtn = document.getElementById('quizCloseBtn');
+        const skillModal = document.getElementById('skillModal');
+        const skillModalIcon = document.getElementById('skillModalIcon');
+        const skillModalTitle = document.getElementById('skillModalTitle');
+        const skillModalDescription = document.getElementById('skillModalDescription');
+        const skillSelection = document.getElementById('skillSelection');
+        const skillPlayerSelection = document.getElementById('skillPlayerSelection');
+        const skillCancelBtn = document.getElementById('skillCancelBtn');
+        const shopModal = document.getElementById('shopModal');
+        const shopPointsValue = document.getElementById('shopPointsValue');
+        const shopItems = document.getElementById('shopItems');
+        const shopCloseBtn = document.getElementById('shopCloseBtn');
+        const effectModal = document.getElementById('effectModal');
+        const effectIcon = document.getElementById('effectIcon');
+        const effectTitle = document.getElementById('effectTitle');
+        const effectText = document.getElementById('effectText');
+        const actionSelection = document.getElementById('actionSelection');
+        const messageBox = document.getElementById('messageBox');
+        const messageIcon = document.getElementById('messageIcon');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const currentTurnDisplay = document.getElementById('currentTurnDisplay');
+        const pointsDisplay = document.getElementById('pointsDisplay');
+        const pointsValue = document.getElementById('pointsValue');
+       
+        // Player colors and positions
+        const playerConfigs = [
+            { id: 1, name: "Player 1", color: "#ff6b6b", dark: "#e03131", avatar: "fa-user-ninja", dicePos: "player1" },
+            { id: 2, name: "Player 2", color: "#4ecdc4", dark: "#0ca678", avatar: "fa-user-astronaut", dicePos: "player2" },
+            { id: 3, name: "Player 3", color: "#ffd166", dark: "#f59f00", avatar: "fa-user-secret", dicePos: "player3" },
+            { id: 4, name: "Player 4", color: "#9d4edd", dark: "#7b2cbf", avatar: "fa-user-robot", dicePos: "player4" }
+        ];
+       
+        // Questions database - INFORMATIKA, CODING, AI untuk SMA kelas 10-11
+        const questions = [
+            // Easy questions (10 seconds) - Dasar Informatika
+            { question: "Apa singkatan dari HTML?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Bahasa pemrograman untuk membuat website interaktif?", options: ["JavaScript", "Python", "Java", "C++"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa fungsi dari CSS dalam web development?", options: ["Mengatur tampilan dan style", "Mengatur logika program", "Menyimpan data", "Menghubungkan database"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa itu CPU dalam komputer?", options: ["Unit Pemrosesan Pusat", "Unit Penyimpanan Pusat", "Unit Kontrol Program", "Unit Cache Prosesor"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa singkatan dari RAM?", options: ["Random Access Memory", "Read Access Memory", "Random Allocation Memory", "Read Allocation Memory"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa itu algoritma?", options: ["Langkah-langkah penyelesaian masalah", "Bahasa pemrograman", "Perangkat keras komputer", "Jenis database"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa fungsi dari sistem operasi?", options: ["Mengelola sumber daya komputer", "Membuat program aplikasi", "Menyimpan data permanen", "Menghubungkan ke internet"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa itu bug dalam pemrograman?", options: ["Kesalahan atau error dalam program", "Fitur baru dalam program", "Jenis virus komputer", "Alat debugging"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa singkatan dari URL?", options: ["Uniform Resource Locator", "Universal Resource Link", "Uniform Reference Locator", "Universal Reference Link"], answer: 0, difficulty: "easy", time: 10 },
+            { question: "Apa itu browser web?", options: ["Aplikasi untuk mengakses internet", "Program untuk membuat website", "Alat untuk coding", "Sistem operasi mobile"], answer: 0, difficulty: "easy", time: 10 },
+           
+            // Normal questions (20 seconds) - Coding & Programming
+            { question: "Apa output dari: console.log(2 + '2')?", options: ["'22'", "4", "Error", "NaN"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa fungsi dari perulangan 'for' dalam pemrograman?", options: ["Mengulangi eksekusi kode", "Mendeklarasikan variabel", "Menangani error", "Membuat fungsi"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa itu variable dalam pemrograman?", options: ["Tempat penyimpanan data", "Jenis data tetap", "Fungsi matematika", "Struktur kontrol"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa perbedaan antara '==' dan '===' di JavaScript?", options: ["'==' bandingkan nilai, '===' bandingkan nilai dan tipe", "'==' bandingkan tipe, '===' bandingkan nilai", "Tidak ada perbedaan", "'===' untuk string, '==' untuk number"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa itu array dalam pemrograman?", options: ["Kumpulan data terindeks", "Jenis data tunggal", "Fungsi matematika", "Struktur database"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa fungsi dari 'if-else' statement?", options: ["Pengambilan keputusan bersyarat", "Perulangan kode", "Deklarasi variabel", "Penanganan error"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa itu function dalam pemrograman?", options: ["Blok kode yang dapat dipanggil berulang", "Jenis data", "Struktur kontrol", "Tipe variabel"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa output dari: Math.floor(3.7)?", options: ["3", "4", "3.7", "Error"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa itu syntax error?", options: ["Kesalahan penulisan kode", "Kesalahan logika program", "Kesalahan runtime", "Kesalahan kompilasi"], answer: 0, difficulty: "normal", time: 20 },
+            { question: "Apa fungsi dari komentar dalam kode?", options: ["Memberikan penjelasan", "Menjalankan program", "Menyimpan data", "Mengcompile kode"], answer: 0, difficulty: "normal", time: 20 },
+           
+            // Hard questions (30 seconds) - AI & Advanced Topics
+            { question: "Apa singkatan dari AI?", options: ["Artificial Intelligence", "Automated Intelligence", "Advanced Internet", "Artificial Internet"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu machine learning?", options: ["AI yang dapat belajar dari data", "Pemrograman manual", "Database management", "Network security"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu neural network?", options: ["Sistem terinspirasi otak manusia untuk AI", "Jaringan komputer", "Database relational", "Sistem operasi"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu blockchain?", options: ["Teknologi ledger terdistribusi", "Jenis database tradisional", "Bahasa pemrograman", "Sistem operasi"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu Big Data?", options: ["Data dalam volume sangat besar", "Database kecil", "Program kecil", "File teks biasa"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu IoT (Internet of Things)?", options: ["Jaringan perangkat fisik yang terhubung", "Internet untuk komputer saja", "Jaringan sosial media", "Protokol email"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu cloud computing?", options: ["Layanan komputasi melalui internet", "Komputer fisik lokal", "Database offline", "Software desktop"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu API (Application Programming Interface)?", options: ["Antarmuka untuk komunikasi antara aplikasi", "Bahasa pemrograman", "Database system", "Network protocol"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu cybersecurity?", options: ["Perlindungan sistem dari serangan digital", "Pembuatan program", "Desain website", "Manajemen database"], answer: 0, difficulty: "hard", time: 30 },
+            { question: "Apa itu data mining?", options: ["Proses menemukan pola dalam data besar", "Penyimpanan data", "Transfer data", "Enkripsi data"], answer: 0, difficulty: "hard", time: 30 }
+        ];
+       
+        // Initialize Game
+        function initGame() {
+            currentPlayerIndex = 0;
+            diceValue = 0;
+            gameActive = true;
+            isQuizActive = false;
+            isPlayerMoving = false;
+            isSkillMode = false;
+            currentSkill = null;
+            totalPoints = 0;
+            quizWillReopen = false; // Reset variabel baru
+            closeDuration = 5; // Reset durasi tutup
+           
+            // Hapus timeout jika ada
+            if (quizCloseTimeout) {
+                clearInterval(quizCloseTimeout);
+                quizCloseTimeout = null;
+            }
+            if (quizCloseInterval) {
+                clearInterval(quizCloseInterval);
+                quizCloseInterval = null;
+            }
+           
+            // Create players based on selected mode
+            players = [];
+            for (let i = 0; i < currentPlayerCount; i++) {
+                const config = playerConfigs[i];
+                players.push({
+                    id: config.id,
+                    name: config.name,
+                    position: 0,
+                    correct: 0,
+                    wrong: 0,
+                    rolls: 0,
+                    color: config.color,
+                    darkColor: config.dark,
+                    avatar: config.avatar,
+                    dicePos: config.dicePos,
+                    skipTurn: false,
+                    easyQuestion: false,
+                    doubleRoll: false,
+                    doublePoints: false,
+                    points: 0,
+                    skills: {}, // Menggunakan object untuk menyimpan jumlah skill
+                    shield: false
+                });
+            }
+           
+            // Create board and UI
+            createZigzagBoard();
+            createPlayerStats();
+            updateDicePosition();
+            updateTurnDisplay();
+            updatePointsDisplay();
+           
+            // Hide all modals
+            quizModal.classList.remove('active');
+            skillModal.classList.remove('active');
+            shopModal.classList.remove('active');
+           
+            // Start with quiz for first player
+            setTimeout(() => {
+                showQuiz();
+            }, 1000);
+        }
+       
+        // Create zigzag board with skill and safe cells
+        function createZigzagBoard() {
+            zigzagBoard.innerHTML = '';
+           
+            for (let row = 0; row < BOARD_ROWS; row++) {
+                const isEvenRow = row % 2 === 1;
+               
+                for (let col = 0; col < BOARD_COLS; col++) {
+                    const cellNumber = row * BOARD_COLS + (isEvenRow ? (BOARD_COLS - col) : (col + 1));
+                   
+                    if (cellNumber > TOTAL_CELLS) continue;
+                   
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    cell.id = `cell-${cellNumber}`;
+                   
+                    // Add cell number
+                    const numberSpan = document.createElement('div');
+                    numberSpan.className = 'cell-number';
+                    numberSpan.textContent = cellNumber;
+                    cell.appendChild(numberSpan);
+                   
+                    // Determine cell type
+                    if (cellNumber === 1) {
+                        cell.classList.add('start');
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-flag';
+                        icon.style.fontSize = '1.5em';
+                        cell.appendChild(icon);
+                    } else if (cellNumber === FINISH_CELL) {
+                        cell.classList.add('finish');
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-trophy';
+                        icon.style.fontSize = '1.8em';
+                        cell.appendChild(icon);
+                    } else if (SKILL_CELLS.includes(cellNumber)) {
+                        cell.classList.add('skill');
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-magic';
+                        icon.style.fontSize = '1.5em';
+                        cell.appendChild(icon);
+                       
+                        const label = document.createElement('div');
+                        label.className = 'cell-label';
+                        label.textContent = 'Skill';
+                        cell.appendChild(label);
+                       
+                        // Add hover effect
+                        cell.addEventListener('mouseenter', () => {
+                            cell.style.boxShadow = `0 0 20px ${'#ff922b'}`;
+                        });
+                       
+                        cell.addEventListener('mouseleave', () => {
+                            cell.style.boxShadow = '';
+                        });
+                    } else if (SAFE_CELLS.includes(cellNumber)) {
+                        cell.classList.add('safe');
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-shield-alt';
+                        icon.style.fontSize = '1.5em';
+                        cell.appendChild(icon);
+                       
+                        const label = document.createElement('div');
+                        label.className = 'cell-label';
+                        label.textContent = 'Aman';
+                        cell.appendChild(label);
+                    } else if (SPECIAL_EFFECTS[cellNumber]) {
+                        cell.classList.add('special');
+                        const effect = SPECIAL_EFFECTS[cellNumber];
+                        const icon = document.createElement('i');
+                        icon.className = `fas fa-question`;
+                        icon.style.fontSize = '1.5em';
+                        icon.style.color = effect.color;
+                        cell.appendChild(icon);
+                       
+                        // Add hover effect
+                        cell.addEventListener('mouseenter', () => {
+                            cell.style.boxShadow = `0 0 20px ${effect.color}`;
+                        });
+                       
+                        cell.addEventListener('mouseleave', () => {
+                            cell.style.boxShadow = '';
+                        });
+                    }
+                   
+                    zigzagBoard.appendChild(cell);
+                }
+            }
+           
+            // Create player markers
+            createPlayerMarkers();
+        }
+       
+        // Create player markers
+        function createPlayerMarkers() {
+            // Remove existing markers
+            document.querySelectorAll('.player-marker').forEach(marker => marker.remove());
+           
+            // Add markers for each player
+            players.forEach(player => {
+                const marker = document.createElement('div');
+                marker.className = `player-marker p${player.id}`;
+                marker.id = `marker-${player.id}`;
+                marker.textContent = `P${player.id}`;
+                marker.style.color = player.color;
+                marker.style.borderColor = player.color;
+               
+                document.getElementById('boardContainer').appendChild(marker);
+            });
+           
+            updatePlayerMarkers();
+        }
+       
+        // Update player markers position
+        function updatePlayerMarkers() {
+            players.forEach(player => {
+                const marker = document.getElementById(`marker-${player.id}`);
+                if (!marker || player.position >= TOTAL_CELLS) return;
+               
+                const cell = document.getElementById(`cell-${player.position + 1}`);
+                if (cell) {
+                    const cellRect = cell.getBoundingClientRect();
+                    const boardRect = zigzagBoard.getBoundingClientRect();
+                    const containerRect = document.getElementById('boardContainer').getBoundingClientRect();
+                   
+                    // Calculate position with offset for multiple players
+                    const offset = (player.id - 1) * 8;
+                    const x = cellRect.left - containerRect.left + 20 + offset;
+                    const y = cellRect.top - containerRect.top + 20 + offset;
+                   
+                    marker.style.left = `${x}px`;
+                    marker.style.top = `${y}px`;
+                   
+                    // Add active class for current player
+                    if (player.id === currentPlayerIndex + 1) {
+                        marker.classList.add('active-player');
+                    } else {
+                        marker.classList.remove('active-player');
+                    }
+                }
+            });
+        }
+       
+        // Create player stats cards
+        function createPlayerStats() {
+            playersStatsBar.innerHTML = '';
+           
+            players.forEach(player => {
+                const card = document.createElement('div');
+                card.className = 'player-stat-card';
+                card.id = `playerCard-${player.id}`;
+                card.style.cssText = `
+                    --player-color: ${player.color};
+                `;
+               
+                // Count total skills
+                const totalSkills = Object.values(player.skills).reduce((sum, count) => sum + count, 0);
+               
+                card.innerHTML = `
+                    <div class="player-skills-badge">
+                        <i class="fas fa-magic"></i> ${totalSkills}
+                    </div>
+                    <div class="player-avatar" style="background: ${player.color};">
+                        <i class="fas ${player.avatar}"></i>
+                    </div>
+                    <div class="player-info">
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-position">Petak ${player.position + 1}</div>
+                        <div class="player-stats">
+                            <span><i class="fas fa-check-circle"></i> ${player.correct}</span>
+                            <span><i class="fas fa-times-circle"></i> ${player.wrong}</span>
+                            <span><i class="fas fa-dice"></i> ${player.rolls}</span>
+                        </div>
+                    </div>
+                    <div class="player-points-badge">
+                        <i class="fas fa-coins"></i> ${player.points}
+                    </div>
+                `;
+               
+                playersStatsBar.appendChild(card);
+            });
+           
+            updatePlayerStats();
+        }
+       
+        // Update player stats
+        function updatePlayerStats() {
+            players.forEach(player => {
+                const card = document.getElementById(`playerCard-${player.id}`);
+                if (!card) return;
+               
+                const position = card.querySelector('.player-position');
+                const stats = card.querySelector('.player-stats');
+                const pointsBadge = card.querySelector('.player-points-badge');
+                const skillsBadge = card.querySelector('.player-skills-badge');
+               
+                if (position) position.textContent = `Petak ${player.position + 1}`;
+                if (stats) stats.innerHTML = `
+                    <span><i class="fas fa-check-circle"></i> ${player.correct}</span>
+                    <span><i class="fas fa-times-circle"></i> ${player.wrong}</span>
+                    <span><i class="fas fa-dice"></i> ${player.rolls}</span>
+                `;
+                if (pointsBadge) pointsBadge.innerHTML = `<i class="fas fa-coins"></i> ${player.points}`;
+               
+                // Update skills badge
+                const totalSkills = Object.values(player.skills).reduce((sum, count) => sum + count, 0);
+                if (skillsBadge) skillsBadge.innerHTML = `<i class="fas fa-magic"></i> ${totalSkills}`;
+               
+                // Highlight active player
+                if (player.id === currentPlayerIndex + 1) {
+                    card.classList.add('active');
+                    card.style.borderColor = player.color;
+                } else {
+                    card.classList.remove('active');
+                    card.style.borderColor = 'transparent';
+                }
+            });
+        }
+       
+        // Update dice position based on current player
+        function updateDicePosition() {
+            const currentPlayer = players[currentPlayerIndex];
+            diceContainer.className = `dice-container ${currentPlayer.dicePos}`;
+            dice.style.borderColor = currentPlayer.color;
+            dice.style.setProperty('--dice-color', currentPlayer.color);
+        }
+       
+        // Update turn display
+        function updateTurnDisplay() {
+            const currentPlayer = players[currentPlayerIndex];
+            currentTurnDisplay.textContent = `Giliran ${currentPlayer.name}`;
+            currentTurnDisplay.style.borderColor = currentPlayer.color;
+            currentTurnDisplay.style.color = currentPlayer.color;
+        }
+       
+        // Update points display
+        function updatePointsDisplay() {
+            const currentPlayer = players[currentPlayerIndex];
+            pointsValue.textContent = currentPlayer.points;
+        }
+       
+        // Show quiz modal (now at bottom)
+        function showQuiz() {
+            if (isPlayerMoving || !gameActive || isSkillMode || quizWillReopen) return;
+           
+            isQuizActive = true;
+            quizModal.classList.add('active');
+           
+            // Reset tombol tutup
+            quizCloseBtn.disabled = false;
+            quizCloseBtn.innerHTML = '<i class="fas fa-times"></i> Tutup (5s)';
+           
+            loadQuestion();
+            startQuizTimer();
+        }
+       
+        // Load question with difficulty-based timer
+        function loadQuestion() {
+            const currentPlayer = players[currentPlayerIndex];
+            let filteredQuestions = questions;
+           
+            // Filter for easy questions if player has that bonus
+            if (currentPlayer.easyQuestion) {
+                filteredQuestions = questions.filter(q => q.difficulty === "easy");
+                currentPlayer.easyQuestion = false;
+            }
+           
+            const randomIndex = Math.floor(Math.random() * filteredQuestions.length);
+            currentQuestion = filteredQuestions[randomIndex];
+           
+            // Set timer based on difficulty
+            timeLeft = currentQuestion.time;
+            timerValue.textContent = timeLeft;
+           
+            // Update quiz title with difficulty
+            const difficultyText = {
+                easy: "Mudah",
+                normal: "Sedang",
+                hard: "Sulit"
+            };
+           
+            quizTitle.textContent = `Quiz Time! (${difficultyText[currentQuestion.difficulty]})`;
+           
+            // Add difficulty indicator to question
+            const difficultyClass = `difficulty-${currentQuestion.difficulty}`;
+            questionText.innerHTML = `
+                ${currentQuestion.question}
+                <span class="difficulty-indicator ${difficultyClass}">${difficultyText[currentQuestion.difficulty]}</span>
+            `;
+           
+            optionsContainer.innerHTML = '';
+           
+            currentQuestion.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'option-btn';
+                button.textContent = option;
+                button.onclick = () => selectOption(index);
+                optionsContainer.appendChild(button);
+            });
+           
+            quizNextBtn.disabled = true;
+        }
+       
+        // Start quiz timer
+        function startQuizTimer() {
+            if (quizTimer) clearInterval(quizTimer);
+           
+            quizTimer = setInterval(() => {
+                timeLeft--;
+                timerValue.textContent = timeLeft;
+               
+                if (timeLeft <= 0) {
+                    clearInterval(quizTimer);
+                    timeOutAnswer();
+                } else if (timeLeft <= 5) {
+                    // Pulse animation when time is running out
+                    quizTimerDisplay.style.animation = 'timer-pulse 0.5s infinite';
+                }
+            }, 1000);
+        }
+       
+        // Handle timeout
+        function timeOutAnswer() {
+            const optionButtons = document.querySelectorAll('.option-btn');
+            const currentPlayer = players[currentPlayerIndex];
+           
+            // Mark correct answer
+            optionButtons.forEach((button, index) => {
+                if (index === currentQuestion.answer) {
+                    button.classList.add('correct');
+                }
+                button.disabled = true;
+            });
+           
+            currentPlayer.wrong++;
+           
+            showMessage("Waktu Habis! ⏰", "Kamu tidak menjawab dalam waktu yang ditentukan.", "fas fa-clock", "#ff6b6b");
+           
+            quizNextBtn.disabled = false;
+            quizNextBtn.innerHTML = '<i class="fas fa-forward"></i> Lanjutkan';
+            quizNextBtn.onclick = () => {
+                quizModal.classList.remove('active');
+                isQuizActive = false;
+                updatePlayerStats();
+                updatePlayerMarkers();
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1000);
+            };
+        }
+       
+        // Select answer option
+        function selectOption(selectedIndex) {
+            clearInterval(quizTimer);
+           
+            const optionButtons = document.querySelectorAll('.option-btn');
+            const isCorrect = selectedIndex === currentQuestion.answer;
+            const currentPlayer = players[currentPlayerIndex];
+           
+            // Mark answers
+            optionButtons.forEach((button, index) => {
+                if (index === currentQuestion.answer) {
+                    button.classList.add('correct');
+                } else if (index === selectedIndex && !isCorrect) {
+                    button.classList.add('wrong');
+                }
+                button.disabled = true;
+            });
+           
+            if (isCorrect) {
+                currentPlayer.correct++;
+               
+                // Award points based on difficulty
+                let pointsEarned = 0;
+                switch(currentQuestion.difficulty) {
+                    case 'easy': pointsEarned = 10; break;
+                    case 'normal': pointsEarned = 20; break;
+                    case 'hard': pointsEarned = 30; break;
+                }
+               
+                // Double points if player has that bonus
+                if (currentPlayer.doublePoints) {
+                    pointsEarned *= 2;
+                    currentPlayer.doublePoints = false;
+                    showMessage("Poin Double! ✨", "Kamu mendapatkan 2x poin untuk jawaban ini!", "fas fa-coins", "#fcc419");
+                }
+               
+                // Bonus for answering quickly
+                if (timeLeft > currentQuestion.time * 0.7) {
+                    pointsEarned = Math.floor(pointsEarned * 1.5);
+                }
+               
+                currentPlayer.points += pointsEarned;
+                totalPoints += pointsEarned;
+               
+                showMessage("Benar! 🎉", `Kamu mendapatkan ${pointsEarned} poin!`, "fas fa-check-circle", "#51cf66");
+               
+                quizNextBtn.disabled = false;
+                quizNextBtn.innerHTML = '<i class="fas fa-dice"></i> Lempar Dadu';
+                quizNextBtn.onclick = () => {
+                    quizModal.classList.remove('active');
+                    isQuizActive = false;
+                    updatePlayerStats();
+                    updatePointsDisplay();
+                    setTimeout(() => {
+                        rollDice();
+                    }, 500);
+                };
+            } else {
+                currentPlayer.wrong++;
+               
+                // FITUR BARU: Mundur random 1-4 langkah ketika salah
+                const stepsBack = Math.floor(Math.random() * 4) + 1;
+                currentPlayer.position = Math.max(0, currentPlayer.position - stepsBack);
+               
+                showMessage("Salah! 😢",
+                    `Jawaban yang benar: ${currentQuestion.options[currentQuestion.answer]}. Kamu mundur ${stepsBack} langkah!`,
+                    "fas fa-times-circle",
+                    "#ff6b6b");
+               
+                // Update posisi pemain setelah mundur
+                updatePlayerStats();
+                updatePlayerMarkers();
+               
+                quizNextBtn.disabled = false;
+                quizNextBtn.innerHTML = '<i class="fas fa-forward"></i> Lanjutkan';
+                quizNextBtn.onclick = () => {
+                    quizModal.classList.remove('active');
+                    isQuizActive = false;
+                    setTimeout(() => {
+                        nextPlayer();
+                    }, 1000);
+                };
+            }
+        }
+       
+        // Roll dice
+        function rollDice() {
+            if (!gameActive || isPlayerMoving || isQuizActive || isSkillMode) return;
+           
+            isPlayerMoving = true;
+            const currentPlayer = players[currentPlayerIndex];
+           
+            dice.classList.add('rolling');
+            dice.innerHTML = '<i class="fas fa-dice-d6"></i>';
+           
+            setTimeout(() => {
+                diceValue = Math.floor(Math.random() * 6) + 1;
+               
+                // Apply double roll if player has that bonus
+                if (currentPlayer.doubleRoll) {
+                    diceValue *= 2;
+                    currentPlayer.doubleRoll = false;
+                    dice.textContent = diceValue + " (×2)";
+                    showMessage("Dadu Double! 🎲", "Lemparan dadu dikali 2!", "fas fa-dice", "#9d4edd");
+                } else {
+                    dice.textContent = diceValue;
+                }
+               
+                dice.classList.remove('rolling');
+                currentPlayer.rolls++;
+               
+                // Animate player movement
+                animatePlayerMovement(currentPlayer, diceValue);
+            }, 1000);
+        }
+       
+        // Animate player movement
+        function animatePlayerMovement(player, steps) {
+            const startPosition = player.position;
+            player.position = Math.min(player.position + steps, TOTAL_CELLS - 1);
+           
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step <= steps) {
+                    const tempPos = Math.min(startPosition + step, TOTAL_CELLS - 1);
+                    // Update marker temporarily
+                    const tempMarker = document.getElementById(`marker-${player.id}`);
+                    if (tempMarker) {
+                        const tempCell = document.getElementById(`cell-${tempPos + 1}`);
+                        if (tempCell) {
+                            const cellRect = tempCell.getBoundingClientRect();
+                            const containerRect = document.getElementById('boardContainer').getBoundingClientRect();
+                            const offset = (player.id - 1) * 8;
+                            const x = cellRect.left - containerRect.left + 20 + offset;
+                            const y = cellRect.top - containerRect.top + 20 + offset;
+                           
+                            tempMarker.style.left = `${x}px`;
+                            tempMarker.style.top = `${y}px`;
+                        }
+                    }
+                    step++;
+                } else {
+                    clearInterval(interval);
+                    isPlayerMoving = false;
+                   
+                    updatePlayerStats();
+                    updatePlayerMarkers();
+                   
+                    // Check for win
+                    if (player.position + 1 === FINISH_CELL) {
+                        gameActive = false;
+                        showMessage(
+                            `🎉 ${player.name} Menang! 🎉`,
+                            `Selamat! ${player.name} mencapai finish dan memenangkan permainan!`,
+                            "fas fa-trophy",
+                            "#ffd700"
+                        );
+                        createConfetti(100);
+                    } else {
+                        // Check special cell
+                        checkSpecialCell();
+                    }
+                }
+            }, 300);
+        }
+       
+        // Check special cell
+        function checkSpecialCell() {
+            const currentPlayer = players[currentPlayerIndex];
+            const currentPosition = currentPlayer.position + 1;
+           
+            // Check if player is on safe cell
+            if (SAFE_CELLS.includes(currentPosition)) {
+                showMessage("Petak Aman! 🛡️", "Kamu berada di petak aman, terlindungi dari serangan.", "fas fa-shield-alt", "#51cf66");
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1500);
+                return;
+            }
+           
+            // Check if player is on skill cell
+            if (SKILL_CELLS.includes(currentPosition)) {
+                // Get random skill
+                const skillKeys = Object.keys(SKILL_TYPES);
+                const randomSkillKey = skillKeys[Math.floor(Math.random() * skillKeys.length)];
+                const skill = SKILL_TYPES[randomSkillKey];
+               
+                // Add skill to player's inventory
+                if (!currentPlayer.skills[skill.id]) {
+                    currentPlayer.skills[skill.id] = 0;
+                }
+                currentPlayer.skills[skill.id]++;
+               
+                showMessage("Skill Ditemukan! 🎁", `Kamu mendapatkan skill: ${skill.name}`, skill.icon, "#ff922b");
+                updatePlayerStats();
+               
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1500);
+                return;
+            }
+           
+            // FITUR BARU: Hadiah random di petak 5, 10, 20, 40, 80
+            if (REWARD_CELLS.includes(currentPosition)) {
+                giveRandomReward(currentPlayer, currentPosition);
+                return;
+            }
+           
+            // Check for special effects cells
+            if (SPECIAL_EFFECTS[currentPosition]) {
+                const effect = SPECIAL_EFFECTS[currentPosition];
+               
+                effectIcon.className = effect.icon;
+                effectIcon.style.color = effect.color;
+                effectTitle.textContent = effect.name;
+                effectTitle.style.color = effect.color;
+               
+                showSpecialCellOptions(currentPosition, effect);
+               
+                effectModal.classList.add('show');
+            } else {
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1000);
+            }
+        }
+       
+        // FITUR BARU: Fungsi berikan hadiah random
+        function giveRandomReward(player, cellNumber) {
+            const rewards = [
+                {
+                    type: "points",
+                    name: "Bonus Poin",
+                    icon: "fas fa-coins",
+                    color: "#fcc419",
+                    getMessage: (value) => `Bonus ${value} poin!`
+                },
+                {
+                    type: "move",
+                    name: "Lompatan Maju",
+                    icon: "fas fa-arrow-up",
+                    color: "#51cf66",
+                    getMessage: (value) => `Maju ${value} langkah!`
+                },
+                {
+                    type: "skill",
+                    name: "Skill Gratis",
+                    icon: "fas fa-magic",
+                    color: "#ff922b",
+                    getMessage: (skill) => `Skill ${skill} gratis!`
+                },
+                {
+                    type: "double",
+                    name: "Bonus Dadu x2",
+                    icon: "fas fa-dice-d20",
+                    color: "#9d4edd",
+                    getMessage: () => "Dadu x2 di giliran berikutnya!"
+                },
+                {
+                    type: "shield",
+                    name: "Perlindungan",
+                    icon: "fas fa-shield-alt",
+                    color: "#4ecdc4",
+                    getMessage: () => "Dapat perlindungan 1x!"
+                }
+            ];
+           
+            const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
+           
+            switch(randomReward.type) {
+                case "points":
+                    const points = Math.floor(Math.random() * 30) + 20;
+                    player.points += points;
+                    showMessage(`Hadiah Petak ${cellNumber}! 🎁`,
+                        randomReward.getMessage(points),
+                        randomReward.icon,
+                        randomReward.color);
+                    break;
+                   
+                case "move":
+                    const steps = Math.floor(Math.random() * 5) + 2;
+                    player.position = Math.min(player.position + steps, TOTAL_CELLS - 1);
+                    showMessage(`Hadiah Petak ${cellNumber}! 🎁`,
+                        randomReward.getMessage(steps),
+                        randomReward.icon,
+                        randomReward.color);
+                    break;
+                   
+                case "skill":
+                    const skillKeys = Object.keys(SKILL_TYPES);
+                    const randomSkillKey = skillKeys[Math.floor(Math.random() * skillKeys.length)];
+                    const skill = SKILL_TYPES[randomSkillKey];
+                   
+                    if (!player.skills[skill.id]) {
+                        player.skills[skill.id] = 0;
+                    }
+                    player.skills[skill.id]++;
+                    showMessage(`Hadiah Petak ${cellNumber}! 🎁`,
+                        randomReward.getMessage(skill.name),
+                        randomReward.icon,
+                        randomReward.color);
+                    break;
+                   
+                case "double":
+                    player.doubleRoll = true;
+                    showMessage(`Hadiah Petak ${cellNumber}! 🎁`,
+                        randomReward.getMessage(),
+                        randomReward.icon,
+                        randomReward.color);
+                    break;
+                   
+                case "shield":
+                    player.shield = true;
+                    showMessage(`Hadiah Petak ${cellNumber}! 🎁`,
+                        randomReward.getMessage(),
+                        randomReward.icon,
+                        randomReward.color);
+                    break;
+            }
+           
+            updatePlayerStats();
+            updatePlayerMarkers();
+           
+            // Check if reached finish after reward
+            if (player.position + 1 === FINISH_CELL) {
+                gameActive = false;
+                showMessage(
+                    `🎉 ${player.name} Menang! 🎉`,
+                    `Selamat! ${player.name} mencapai finish dan memenangkan permainan!`,
+                    "fas fa-trophy",
+                    "#ffd700"
+                );
+                createConfetti(100);
+            } else {
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1500);
+            }
+        }
+       
+        // Show special cell options
+        function showSpecialCellOptions(cellNumber, effect) {
+            effectText.textContent = `Kamu berada di petak ${cellNumber}. Pilih salah satu efek:`;
+            actionSelection.innerHTML = '';
+           
+            effect.effects.forEach((eff, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.textContent = eff.description;
+                btn.style.cssText = `
+                    --btn-color: ${eff.color};
+                    --btn-color-dark: ${eff.color}99;
+                `;
+               
+                btn.onclick = () => {
+                    applySpecialEffect(eff, cellNumber);
+                    effectModal.classList.remove('show');
+                };
+               
+                actionSelection.appendChild(btn);
+            });
+        }
+       
+        // Apply special effect
+        function applySpecialEffect(effect, cellNumber) {
+            const currentPlayer = players[currentPlayerIndex];
+           
+            switch (effect.type) {
+                case 'forward':
+                    currentPlayer.position = Math.min(currentPlayer.position + effect.value, TOTAL_CELLS - 1);
+                    showMessage("Bonus Maju! 🚀", `Kamu maju ${effect.value} langkah!`, "fas fa-arrow-up", effect.color);
+                    break;
+                   
+                case 'easy_question':
+                    currentPlayer.easyQuestion = true;
+                    showMessage("Soal Mudah! 📚", "Kamu akan dapat soal mudah di giliran berikutnya!", "fas fa-book", effect.color);
+                    break;
+                   
+                case 'roll_again':
+                    showMessage("Lempar Lagi! 🎲", "Kamu dapat lempar dadu lagi!", "fas fa-redo", effect.color);
+                    setTimeout(() => {
+                        rollDice();
+                    }, 1500);
+                    return; // Don't go to next player yet
+                   
+                case 'double_next':
+                    currentPlayer.doubleRoll = true;
+                    showMessage("Dadu ×2! ✨", "Lemparan dadu berikutnya akan dikali 2!", "fas fa-times-circle", effect.color);
+                    break;
+                   
+                case 'trap':
+                    if (effect.value === -1) {
+                        currentPlayer.skipTurn = true;
+                        showMessage("Skip Giliran! ⏭️", "Kamu kehilangan 1 giliran!", "fas fa-forward", effect.color);
+                    } else if (effect.value === -2) {
+                        currentPlayer.position = Math.max(0, currentPlayer.position - 2);
+                        showMessage("Mundur! 🔙", "Kamu mundur 2 langkah!", "fas fa-arrow-down", effect.color);
+                    }
+                    break;
+                   
+                case 'trap_combo':
+                    currentPlayer.skipTurn = true;
+                    currentPlayer.position = Math.max(0, currentPlayer.position - 2);
+                    showMessage("Kombinasi Jebakan! ⚡", "Skip giliran + mundur 2 langkah!", "fas fa-bolt", effect.color);
+                    break;
+                   
+                case 'double_roll':
+                    currentPlayer.doubleRoll = true;
+                    showMessage("Dadu ×2! 🎲", "Lemparan dadu berikutnya dikali 2!", "fas fa-dice", effect.color);
+                    break;
+                   
+                case 'big_forward':
+                    currentPlayer.position = Math.min(currentPlayer.position + effect.value, TOTAL_CELLS - 1);
+                    showMessage("Lompatan Besar! 🦘", `Kamu melompat maju ${effect.value} langkah!`, "fas fa-running", effect.color);
+                    break;
+                   
+                case 'attack':
+                    showPlayerSelectionForAttack();
+                    return; // Don't update UI yet
+                   
+                case 'big_trap':
+                    currentPlayer.position = Math.max(0, currentPlayer.position - 6);
+                    showMessage("Terlempar Mundur! 💥", "Kamu terlempar mundur 6 langkah!", "fas fa-bomb", effect.color);
+                    break;
+            }
+           
+            updatePlayerStats();
+            updatePlayerMarkers();
+           
+            // Check if reached finish after effect
+            if (currentPlayer.position + 1 === FINISH_CELL) {
+                gameActive = false;
+                showMessage(
+                    `🎉 ${currentPlayer.name} Menang! 🎉`,
+                    `Selamat! ${currentPlayer.name} mencapai finish dan memenangkan permainan!`,
+                    "fas fa-trophy",
+                    "#ffd700"
+                );
+                createConfetti(100);
+            } else {
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1500);
+            }
+        }
+       
+        // Show player selection for attack
+        function showPlayerSelectionForAttack() {
+            effectText.textContent = "Pilih pemain yang akan diserang (mundur 3 langkah):";
+            actionSelection.innerHTML = '';
+           
+            players.forEach(player => {
+                if (player.id !== players[currentPlayerIndex].id) {
+                    const btn = document.createElement('button');
+                    btn.className = 'action-btn';
+                    btn.textContent = `${player.name} (Petak ${player.position + 1})`;
+                    btn.style.cssText = `
+                        --btn-color: #e03131;
+                        --btn-color-dark: #c92a2a;
+                    `;
+                   
+                    btn.onclick = () => {
+                        // Check if player has shield
+                        if (player.shield) {
+                            player.shield = false;
+                            showMessage("Serangan Diblokir! 🛡️", `${player.name} memiliki shield dan terlindungi!`, "fas fa-shield-alt", "#4ecdc4");
+                        } else {
+                            player.position = Math.max(0, player.position - 3);
+                            showMessage("Serangan Berhasil! ⚔️", `${player.name} mundur 3 langkah!`, "fas fa-crosshairs", "#e03131");
+                        }
+                       
+                        updatePlayerStats();
+                        updatePlayerMarkers();
+                        effectModal.classList.remove('show');
+                       
+                        setTimeout(() => {
+                            nextPlayer();
+                        }, 1500);
+                    };
+                   
+                    actionSelection.appendChild(btn);
+                }
+            });
+        }
+       
+        // Next player
+        function nextPlayer() {
+            if (!gameActive) return;
+           
+            // Find next player who doesn't have skip turn
+            let attempts = 0;
+            do {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+                attempts++;
+                if (attempts > players.length * 2) break; // Prevent infinite loop
+            } while (players[currentPlayerIndex].skipTurn && attempts < players.length * 2);
+           
+            // Clear skip turn
+            players[currentPlayerIndex].skipTurn = false;
+           
+            updateDicePosition();
+            updateTurnDisplay();
+            updatePointsDisplay();
+            updatePlayerStats();
+            updatePlayerMarkers();
+           
+            // Show quiz for next player after delay
+            setTimeout(() => {
+                showQuiz();
+            }, 1500);
+        }
+       
+        // Show skill modal - IMPROVED
+        function showSkillModal() {
+            if (!gameActive || isQuizActive || isPlayerMoving || isSkillMode) return;
+           
+            const currentPlayer = players[currentPlayerIndex];
+            const skillCount = Object.values(currentPlayer.skills).reduce((sum, count) => sum + count, 0);
+           
+            if (skillCount === 0) {
+                showMessage("Tidak Ada Skill! 😢", "Kamu belum memiliki skill. Dapatkan dengan mendarat di petak skill atau beli di toko.", "fas fa-exclamation-circle", "#ff6b6b");
+                return;
+            }
+           
+            isSkillMode = true;
+            skillModalTitle.textContent = "Skill Inventory";
+            skillModalDescription.textContent = "Pilih skill yang ingin digunakan:";
+           
+            // Populate skill selection
+            skillSelection.innerHTML = '';
+            skillPlayerSelection.style.display = 'none';
+            skillPlayerSelection.innerHTML = '';
+           
+            let hasSkills = false;
+           
+            // Show all available skills
+            Object.keys(SKILL_TYPES).forEach(skillKey => {
+                const skill = SKILL_TYPES[skillKey];
+                const count = currentPlayer.skills[skill.id] || 0;
+               
+                if (count > 0) {
+                    hasSkills = true;
+                    const skillBtn = document.createElement('button');
+                    skillBtn.className = 'skill-item-btn';
+                    skillBtn.innerHTML = `
+                        <div class="skill-item-icon">
+                            <i class="${skill.icon}"></i>
+                        </div>
+                        <div class="skill-item-name">${skill.name}</div>
+                        <div class="skill-item-count">${count}</div>
+                    `;
+                   
+                    skillBtn.onclick = () => {
+                        selectSkill(skill);
+                    };
+                   
+                    skillSelection.appendChild(skillBtn);
+                }
+            });
+           
+            if (!hasSkills) {
+                showMessage("Tidak Ada Skill! 😢", "Kamu belum memiliki skill. Dapatkan dengan mendarat di petak skill atau beli di toko.", "fas fa-exclamation-circle", "#ff6b6b");
+                skillModal.classList.remove('active');
+                isSkillMode = false;
+                return;
+            }
+           
+            skillModal.classList.add('active');
+        }
+       
+        // Select skill to use
+        function selectSkill(skill) {
+            currentSkill = skill;
+           
+            if (skill.requiresTarget) {
+                // Show player selection for skills that need target
+                skillModalDescription.textContent = `Pilih target untuk skill ${skill.name}:`;
+                skillSelection.style.display = 'none';
+                skillPlayerSelection.style.display = 'grid';
+               
+                // Populate player selection
+                skillPlayerSelection.innerHTML = '';
+               
+                players.forEach(player => {
+                    if (player.id !== players[currentPlayerIndex].id) {
+                        const playerBtn = document.createElement('button');
+                        playerBtn.className = 'player-select-btn';
+                        playerBtn.innerHTML = `
+                            <div class="player-select-avatar" style="background: ${player.color};">
+                                <i class="fas ${player.avatar}"></i>
+                            </div>
+                            <div class="player-select-name">${player.name}</div>
+                            <div class="player-select-position">Petak ${player.position + 1}</div>
+                        `;
+                       
+                        playerBtn.onclick = () => {
+                            applySkill(player);
+                        };
+                       
+                        skillPlayerSelection.appendChild(playerBtn);
+                    }
+                });
+            } else {
+                // Apply skill directly if no target needed
+                applySkill(null);
+            }
+        }
+       
+        // Apply skill to selected player or self
+        function applySkill(targetPlayer) {
+            const currentPlayer = players[currentPlayerIndex];
+           
+            // Decrease skill count
+            currentPlayer.skills[currentSkill.id]--;
+            if (currentPlayer.skills[currentSkill.id] <= 0) {
+                delete currentPlayer.skills[currentSkill.id];
+            }
+           
+            switch (currentSkill.effect) {
+                case 'moveBack':
+                    const stepsBack = Math.floor(Math.random() * 5) + 1;
+                    targetPlayer.position = Math.max(0, targetPlayer.position - stepsBack);
+                    showMessage("Skill Dipakai! ⚡", `${targetPlayer.name} mundur ${stepsBack} langkah!`, currentSkill.icon, "#ff922b");
+                    break;
+                   
+                case 'stealTurn':
+                    // Find target player index
+                    const targetIndex = players.findIndex(p => p.id === targetPlayer.id);
+                    currentPlayerIndex = targetIndex;
+                    showMessage("Giliran Dicuri! 🕵️", `Kamu mengambil giliran ${targetPlayer.name}!`, currentSkill.icon, "#ff922b");
+                    break;
+                   
+                case 'blockTurn':
+                    targetPlayer.skipTurn = true;
+                    showMessage("Giliran Diblokir! 🚫", `${targetPlayer.name} tidak bisa bermain pada giliran berikutnya!`, currentSkill.icon, "#ff922b");
+                    break;
+                   
+                case 'extraMove':
+                    const extraSteps = Math.floor(Math.random() * 3) + 1;
+                    currentPlayer.position = Math.min(currentPlayer.position + extraSteps, TOTAL_CELLS - 1);
+                    showMessage("Langkah Ekstra! 👣", `Kamu maju ${extraSteps} langkah ekstra!`, currentSkill.icon, "#ff922b");
+                    break;
+                   
+                case 'doublePoints':
+                    currentPlayer.doublePoints = true;
+                    showMessage("Poin Double Aktif! ✨", "Poin 2x pada soal berikutnya!", currentSkill.icon, "#ff922b");
+                    break;
+            }
+           
+            skillModal.classList.remove('active');
+            isSkillMode = false;
+            currentSkill = null;
+           
+            updatePlayerStats();
+            updatePlayerMarkers();
+            updateTurnDisplay();
+            updateDicePosition();
+           
+            // If not steal turn, continue normally
+            if (currentSkill && currentSkill.effect !== 'stealTurn') {
+                setTimeout(() => {
+                    nextPlayer();
+                }, 1500);
+            } else if (currentSkill && currentSkill.effect === 'stealTurn') {
+                // If steal turn, show quiz for current player
+                setTimeout(() => {
+                    showQuiz();
+                }, 1500);
+            } else {
+                // For skills without target (extra move, double points)
+                updatePlayerStats();
+                updatePlayerMarkers();
+               
+                // Check if reached finish after extra move
+                if (currentPlayer.position + 1 === FINISH_CELL) {
+                    gameActive = false;
+                    showMessage(
+                        `🎉 ${currentPlayer.name} Menang! 🎉`,
+                        `Selamat! ${currentPlayer.name} mencapai finish dan memenangkan permainan!`,
+                        "fas fa-trophy",
+                        "#ffd700"
+                    );
+                    createConfetti(100);
+                } else {
+                    setTimeout(() => {
+                        nextPlayer();
+                    }, 1500);
+                }
+            }
+        }
+       
+        // Show shop modal
+        function showShopModal() {
+            if (!gameActive || isQuizActive || isPlayerMoving || isSkillMode) return;
+           
+            const currentPlayer = players[currentPlayerIndex];
+            shopPointsValue.textContent = currentPlayer.points;
+           
+            // Populate shop items
+            shopItems.innerHTML = '';
+           
+            SHOP_ITEMS.forEach(item => {
+                const shopItem = document.createElement('div');
+                shopItem.className = 'shop-item';
+                shopItem.innerHTML = `
+                    <div class="shop-item-icon">
+                        <i class="${item.icon}"></i>
+                    </div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-description">${item.description}</div>
+                    <div class="shop-item-price">
+                        <i class="fas fa-coins"></i> ${item.price}
+                    </div>
+                `;
+               
+                shopItem.onclick = () => {
+                    purchaseItem(item, currentPlayer);
+                };
+               
+                shopItems.appendChild(shopItem);
+            });
+           
+            shopModal.classList.add('active');
+        }
+       
+        // Purchase item from shop
+        function purchaseItem(item, player) {
+            if (player.points < item.price) {
+                showMessage("Poin Tidak Cukup! 😢", `Kamu butuh ${item.price} poin untuk membeli ${item.name}`, "fas fa-times-circle", "#ff6b6b");
+                return;
+            }
+           
+            player.points -= item.price;
+           
+            if (item.type === 'skill') {
+                // Add skill to player's inventory
+                if (!player.skills[item.skill.id]) {
+                    player.skills[item.skill.id] = 0;
+                }
+                player.skills[item.skill.id]++;
+               
+                showMessage("Berhasil Dibeli! 🎉", `Kamu mendapatkan skill: ${item.skill.name}`, item.skill.icon, "#ff922b");
+            } else if (item.type === 'bonus') {
+                switch (item.effect) {
+                    case 'doubleDice':
+                        player.doubleRoll = true;
+                        showMessage("Bonus Aktif! ✨", "Lemparan dadu berikutnya akan dikali 2!", item.icon, "#9d4edd");
+                        break;
+                    case 'easyQuestion':
+                        player.easyQuestion = true;
+                        showMessage("Bonus Aktif! 📚", "Soal berikutnya akan lebih mudah!", item.icon, "#ffd166");
+                        break;
+                    case 'shield':
+                        player.shield = true;
+                        showMessage("Shield Aktif! 🛡️", "Kamu terlindungi dari serangan 1 kali!", item.icon, "#4ecdc4");
+                        break;
+                }
+            }
+           
+            updatePlayerStats();
+            updatePointsDisplay();
+            shopPointsValue.textContent = player.points;
+           
+            // Close shop after delay
+            setTimeout(() => {
+                shopModal.classList.remove('active');
+            }, 1500);
+        }
+       
+        // Show message
+        function showMessage(title, text, icon, color) {
+            messageIcon.className = `message-icon ${icon}`;
+            messageIcon.style.color = color;
+            messageTitle.textContent = title;
+            messageTitle.style.color = color;
+            messageText.textContent = text;
+            messageBox.classList.add('show');
+        }
+       
+        // Close message
+        function closeMessage() {
+            messageBox.classList.remove('show');
+        }
+       
+        // Create confetti effect
+        function createConfetti(count) {
+            for (let i = 0; i < count; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.cssText = `
+                    left: ${Math.random() * 100}vw;
+                    background: hsl(${Math.random() * 360}, 100%, 60%);
+                    width: ${Math.random() * 15 + 5}px;
+                    height: ${Math.random() * 15 + 5}px;
+                    border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                `;
+               
+                document.body.appendChild(confetti);
+               
+                confetti.animate([
+                    { top: '-20px', opacity: 1, transform: 'rotate(0deg)' },
+                    { top: '100vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
+                ], {
+                    duration: Math.random() * 3000 + 2000,
+                    easing: 'cubic-bezier(0.215, 0.610, 0.355, 1)'
+                });
+               
+                setTimeout(() => confetti.remove(), 5000);
+            }
+        }
+       
+        // FITUR BARU: Setup tombol tutup quiz
+        function setupQuizCloseButton() {
+            quizCloseBtn.addEventListener('click', () => {
+                if (quizWillReopen) return;
+               
+                // Sembunyikan modal
+                quizModal.classList.remove('active');
+                quizWillReopen = true;
+               
+                // Hentikan timer quiz
+                if (quizTimer) {
+                    clearInterval(quizTimer);
+                }
+               
+                // Disable semua tombol opsi
+                const optionButtons = document.querySelectorAll('.option-btn');
+                optionButtons.forEach(btn => btn.disabled = true);
+               
+                // Update teks tombol
+                quizCloseBtn.disabled = true;
+               
+                // Timer untuk membuka kembali quiz
+                let secondsLeft = closeDuration;
+                updateCloseButtonText(secondsLeft);
+               
+                quizCloseInterval = setInterval(() => {
+                    secondsLeft--;
+                    updateCloseButtonText(secondsLeft);
+                   
+                    if (secondsLeft <= 0) {
+                        clearInterval(quizCloseInterval);
+                       
+                        // Buka kembali quiz modal
+                        quizModal.classList.add('active');
+                        quizWillReopen = false;
+                        quizCloseBtn.disabled = false;
+                        quizCloseBtn.innerHTML = '<i class="fas fa-times"></i> Tutup (5s)';
+                       
+                        // Aktifkan kembali tombol opsi
+                        optionButtons.forEach(btn => {
+                            if (!btn.classList.contains('correct') && !btn.classList.contains('wrong')) {
+                                btn.disabled = false;
+                            }
+                        });
+                       
+                        // Mulai timer quiz lagi dengan sisa waktu yang sama
+                        if (timeLeft > 0) {
+                            startQuizTimer();
+                        }
+                    }
+                }, 1000);
+            });
+        }
+       
+        // FITUR BARU: Update teks tombol tutup
+        function updateCloseButtonText(seconds) {
+            quizCloseBtn.innerHTML = `<i class="fas fa-clock"></i> Buka ${seconds}s`;
+        }
+       
+        // Event Listeners
+        dice.addEventListener('click', () => {
+            if (!gameActive || isPlayerMoving || isQuizActive || isSkillMode) return;
+            rollDice();
+        });
+       
+        showBoardBtn.addEventListener('click', () => {
+            if (isQuizActive) {
+                quizModal.classList.remove('active');
+                isQuizActive = false;
+                if (quizTimer) clearInterval(quizTimer);
+            }
+        });
+       
+        skillBtn.addEventListener('click', () => {
+            showSkillModal();
+        });
+       
+        shopBtn.addEventListener('click', () => {
+            showShopModal();
+        });
+       
+        skillCancelBtn.addEventListener('click', () => {
+            skillModal.classList.remove('active');
+            isSkillMode = false;
+            currentSkill = null;
+        });
+       
+        shopCloseBtn.addEventListener('click', () => {
+            shopModal.classList.remove('active');
+        });
+       
+        // Setup tombol tutup quiz
+        setupQuizCloseButton();
+       
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === quizModal) {
+                // Don't close quiz modal by clicking outside
+                return;
+            }
+           
+            if (e.target === effectModal) {
+                effectModal.classList.remove('show');
+                setTimeout(() => {
+                    nextPlayer();
+                }, 500);
+            }
+           
+            if (e.target === messageBox) {
+                closeMessage();
+            }
+           
+            if (e.target === skillModal) {
+                skillModal.classList.remove('active');
+                isSkillMode = false;
+                currentSkill = null;
+            }
+           
+            if (e.target === shopModal) {
+                shopModal.classList.remove('active');
+            }
+        });
+       
+        // Mode selection
+        document.getElementById('mode2P').addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode2P').classList.add('active');
+            currentPlayerCount = 2;
+            modeSelection.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            initGame();
+        });
+       
+        document.getElementById('mode3P').addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode3P').classList.add('active');
+            currentPlayerCount = 3;
+            modeSelection.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            initGame();
+        });
+       
+        document.getElementById('mode4P').addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode4P').classList.add('active');
+            currentPlayerCount = 4;
+            modeSelection.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            initGame();
+        });
+       
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (quizModal.classList.contains('active')) {
+                    quizModal.classList.remove('active');
+                    isQuizActive = false;
+                    if (quizTimer) clearInterval(quizTimer);
+                }
+                if (effectModal.classList.contains('show')) {
+                    effectModal.classList.remove('show');
+                }
+                if (messageBox.classList.contains('show')) {
+                    closeMessage();
+                }
+                if (skillModal.classList.contains('active')) {
+                    skillModal.classList.remove('active');
+                    isSkillMode = false;
+                    currentSkill = null;
+                }
+                if (shopModal.classList.contains('active')) {
+                    shopModal.classList.remove('active');
+                }
+            }
+           
+            if (e.key === ' ' && quizNextBtn.disabled === false && quizModal.classList.contains('active')) {
+                quizNextBtn.click();
+            }
+           
+            if (e.key === 'r' || e.key === 'R') {
+                modeSelection.style.display = 'flex';
+                gameContainer.style.display = 'none';
+            }
+           
+            if (e.key === 's' || e.key === 'S') {
+                skillBtn.click();
+            }
+           
+            if (e.key === 'p' || e.key === 'P') {
+                shopBtn.click();
+            }
+        });
+       
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            updatePlayerMarkers();
+        });
+    </script>
+</body>
+</html>
